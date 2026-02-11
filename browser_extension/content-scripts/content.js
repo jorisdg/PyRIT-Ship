@@ -20,7 +20,6 @@ function mouseenter(event) {
 }
 
 function mouseleave(event) {
-  console.log("remove due to leave")
   $(event.currentTarget).remove();
 }
 
@@ -124,14 +123,28 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       //     console.log("textTargetID: " + textTargetId);
       //   })();
       // }
+      console.log("setting text");
+      console.log(request.inputStrategy);
+      console.log(request.text);
       if (!!textTarget) {
-        console.log("setting text");
+        switch(request.inputStrategy) {
+          case "typing-setRangeText":
+            inputSetRange(request.text);
+            break;
+          case "typing-events":
+            inputEvents(request.text);
+            break;
+          case "paste":
+            pasteIntoInput(request.text);
+            break;
+        }
+
         //$(textTarget).text(request.text).change();
-        $(textTarget).focus();
-        $(textTarget).val(request.text).change();
+        // $(textTarget).focus();
+        // $(textTarget).val(request.text).change();
         // $(textTarget).val(request.text).trigger('input');
         // $(textTarget).trigger({type: 'keypress', which: 13, keycode: 13});
-        $(textTarget).trigger($.Event("keypress", {key: " "}))
+        //$(textTarget).trigger($.Event("keypress", {key: " "}))
         //$(textTarget).trigger($.Event('keypress', { which: 13, keyCode: 13 }));
         // for (let i = 0; i < request.text.length; i++) {
         //   $(textTarget).trigger({type: 'keypress', which: request.text[i]});
@@ -146,6 +159,153 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   }
 
 });
+
+
+function setFormControlValue(target, value, opts = {}) {
+  const { simulateTyping = false, blur = true } = opts;
+
+  if (!target) return false;
+
+  // If it’s inside shadow DOM, we still dispatch composed events below.
+  target.focus?.();
+
+  const tag = (target.tagName || '').toUpperCase();
+  const isInput = tag === 'INPUT';
+  const isTextarea = tag === 'TEXTAREA';
+  const isSelect = tag === 'SELECT';
+  const isCE = !isInput && !isTextarea && !isSelect && target.isContentEditable;
+
+  try {
+    if (isSelect) {
+      setSelectValue(target, String(value));
+    } else if (isCE) {
+      setContentEditable(target, String(value));
+    } else if (simulateTyping && (isInput || isTextarea)) {
+      // type-like path for masks/formatters
+      typeLike(target, String(value));
+    } else if (isInput || isTextarea) {
+      setInputValue(target, String(value));
+    } else {
+      // Fallback: attempt textContent + input
+      target.textContent = String(value);
+      target.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    }
+
+    if (blur) target.blur?.();
+    return true;
+  } catch (e) {
+    console.warn('setFormControlValue failed', e);
+    return false;
+  }
+}
+
+
+function inputSetRange(text) {
+  const el = $(textTarget)[0];
+  el.focus();
+
+  const isTextControl = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+  if (isTextControl) {
+    const len = el.value.length;
+    if (typeof el.setSelectionRange === 'function') {
+      el.setSelectionRange(0, len);
+    }
+    if (typeof el.setRangeText === 'function') {
+      // Preferred path
+      el.setRangeText(text, 0, len, "end");
+    } else {
+      // Fallback for very old browsers / exotic inputs
+      el.value = text;
+    }
+    el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    return;
+  }
+
+  if (el.isContentEditable) {
+    // Replace all content for contenteditable
+    // (Could implement selection if needed)
+    const selection = window.getSelection();
+    if (selection) {
+      selection.removeAllRanges();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      selection.addRange(range);
+    }
+    // Use textContent to avoid unintended HTML insertion
+    el.textContent = text;
+    el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    return;
+  }
+
+  // Generic fallback (non-input, non-contenteditable)
+  el.textContent = text;
+  el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+}
+
+function inputEvents(text) {
+  const el = $(textTarget)[0];
+  el.focus();
+  const canceled = !el.dispatchEvent(new InputEvent('beforeinput', {
+    inputType: 'insertText',
+    data: text,
+    bubbles: true,
+    composed: true,
+    cancelable: true
+  }));
+  if (!canceled) {
+    // fall through to native setter + input
+    setInputValue(el, el.value + text);
+  }
+}
+
+function setInputValue(el, value) {
+  console.log("setInputValue");
+  // Only use the prototype descriptor for real input/textarea elements
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+    const proto = Object.getPrototypeOf(el); // HTMLInputElement.prototype or HTMLTextAreaElement.prototype
+    const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+    if (desc && typeof desc.set === 'function') {
+      desc.set.call(el, value);
+    } else {
+      el.value = value;
+    }
+    el.dispatchEvent(new Event('input',  { bubbles: true, composed: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    return;
+  }
+
+  // Contenteditable fallback
+  if (el.isContentEditable) {
+    el.textContent = value;
+    el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    return;
+  }
+
+  // Generic fallback (other element types)
+  el.textContent = value;
+  el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+}
+
+function pasteIntoInput(text) {
+  const el = $(textTarget)[0];
+  el.focus();
+  const ev = new InputEvent("beforeinput", {
+    inputType: "insertFromPaste",
+    data: text,
+    bubbles: true,
+    composed: true,
+    cancelable: true
+  });
+
+  const canceled = !el.dispatchEvent(ev);
+
+  if (!canceled) {
+    el.textContent = text;
+    el.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+  }
+}
 
 
 // https://stackoverflow.com/questions/4780822/how-can-i-detect-when-a-new-element-has-been-added-to-the-document-in-jquery

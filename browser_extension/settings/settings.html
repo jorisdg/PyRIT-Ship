@@ -21,10 +21,31 @@
         <body>
             <h1>Setup the Controls</h1>
             <h2 id="tabHeader">Tab: </h2>
-            <button id="getTextTarget">Select Text Control</button>
-            <button id="getSendTarget">Select Submit Control</button>
+            <input type="button" id="getTextTargetButton" value="Select Text Control"/>
+            <input type="button" id="getSendTargetButton" value="Select Submit Control"/>
             <br/>
-            <button id="sendText">Send Text</button>
+            <br/>
+            <fieldset id="sendInputTypeOptions">
+                <legend>Send text input method</legend>
+                <label>
+                    <input type="radio" name="sendInputMode" id="modeTypingEvents" value="paste" checked>
+                    simulate paste
+                </label><br>
+                <label>
+                    <input type="radio" name="sendInputMode" id="modeTypingEvents" value="typing-events">
+                    typing (with events)
+                </label><br>
+                <label>
+                    <input type="radio" name="sendInputMode" id="modeTypingSetRange" value="typing-setRangeText">
+                    typing (set range text)
+                </label><br>
+                <label>
+                    <input type="radio" name="sendInputMode" id="modeNativeSetEvents" value="native-events">
+                    native set with events
+                </label>
+            </fieldset>
+            <br/>
+            <input type="button" id="sendTextButton" value="Send Text"/>
             <script src="settings.js"></script>
         </body>
     </body>

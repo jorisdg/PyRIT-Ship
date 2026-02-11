@@ -3,16 +3,16 @@
 
     var response = await chrome.runtime.sendMessage({msgType: "getTextTarget", tabid: tab.id});  
     if (!!response.target) {
-        document.getElementById("getTextTarget").style["background-color"] = "green";
+        document.getElementById("getTextTargetButton").style["background-color"] = "green";
     }
 
     response = await chrome.runtime.sendMessage({msgType: "getSendTarget", tabid: tab.id});  
     if (!!response.target) {
-        document.getElementById("getSendTarget").style["background-color"] = "green";
+        document.getElementById("getSendTargetButton").style["background-color"] = "green";
     }
 })();
 
-const getSendTarget = document.getElementById("getSendTarget");
+const getSendTarget = document.getElementById("getSendTargetButton");
 if (getSendTarget) {
     getSendTarget.onclick = function() {
         (async () => {
@@ -25,7 +25,7 @@ if (getSendTarget) {
     };
 }
 
-const getTextTarget = document.getElementById("getTextTarget");
+const getTextTarget = document.getElementById("getTextTargetButton");
 if (getTextTarget) {
     getTextTarget.onclick = function() {
         (async () => {
@@ -37,14 +37,17 @@ if (getTextTarget) {
     };
 }
 
-const sendText = document.getElementById("sendText");
-if (sendText) {
+const sendText = document.getElementById("sendTextButton");
+if (sendText) {    
     sendText.onclick = function() {
+        const selected = document.querySelector('input[name="sendInputMode"]:checked');
+        const sendInputMode = selected ? selected.value : null;
         chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
             chrome.tabs.sendMessage(
                 tabs[0].id,
                 {
                     msgType: "sendText",
+                    inputStrategy: sendInputMode,
                     text: "Hello, world!",
                 },
                 function(response) {

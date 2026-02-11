@@ -24,15 +24,15 @@ chrome.runtime.onMessage.addListener((request, sender, reply) => {
             tabTargets[tabid] = targets;
             break;
         case "getTextTarget":
-                var targets;
-                if (!!tabTargets[tabid]) {
-                    targets = tabTargets[tabid];
-                    reply({target: targets.textTarget});
-                }
-                else {
-                    reply({target: null});
-                }
-                break;
+            var targets;
+            if (!!tabTargets[tabid]) {
+                targets = tabTargets[tabid];
+                reply({target: targets.textTarget});
+            }
+            else {
+                reply({target: null});
+            }
+            break;
         case "setSendTarget":
             var targets;
             console.log("setSendTarget");
@@ -46,15 +46,15 @@ chrome.runtime.onMessage.addListener((request, sender, reply) => {
             tabTargets[tabid] = targets;
             break;
         case "getSendTarget":
-                var targets;
-                if (!!tabTargets[tabid]) {
-                    targets = tabTargets[tabid];
-                    reply({target: targets.sendTarget});
-                }
-                else {
-                    reply({target: null});
-                }
-                break;
+            var targets;
+            if (!!tabTargets[tabid]) {
+                targets = tabTargets[tabid];
+                reply({target: targets.sendTarget});
+            }
+            else {
+                reply({target: null});
+            }
+            break;
     }
 
     return true;
