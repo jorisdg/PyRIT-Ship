@@ -321,14 +321,21 @@ async def _run_attack(objective: str, success_description: str, max_turns: int, 
     return await red_teaming_attack.execute_async(objective=objective)
 
 
+# Pre-authenticated credential set at startup (if using interactive browser auth)
+_browser_credential = None
+
 def _build_chat_target():
     """Build the OpenAI chat target instance."""
+    global _browser_credential
     endpoint = os.environ.get("OPENAI_CHAT_ENDPOINT", "")
     api_key = os.environ.get("OPENAI_CHAT_KEY", "")
 
     if not api_key and "azure.com/" in endpoint:
+        if _browser_credential is None:
+            _browser_credential = InteractiveBrowserCredential()
+            _browser_credential.authenticate(scopes=["https://cognitiveservices.azure.com/.default"])
         token_provider = get_bearer_token_provider(
-            InteractiveBrowserCredential(),
+            _browser_credential,
             "https://cognitiveservices.azure.com/.default",
         )
         api_key = token_provider
@@ -347,6 +354,20 @@ def initialize_chat_target():
 if __name__ == '__main__':
     if os.environ.get("OPENAI_CHAT_ENDPOINT") is None:
         load_dotenv()
+
+    # Authenticate interactively on the main thread at startup (before event loop is needed)
+    # so the user has time to complete browser auth without blocking anything.
+    endpoint = os.environ.get("OPENAI_CHAT_ENDPOINT", "")
+    api_key = os.environ.get("OPENAI_CHAT_KEY", "")
+    if not api_key and "azure.com/" in endpoint:
+        print("No API key set for Azure endpoint — launching browser for interactive login...")
+        credential = InteractiveBrowserCredential()
+        credential.authenticate(scopes=["https://cognitiveservices.azure.com/.default"])
+        _browser_credential = credential
+        print("Authentication successful.")
+    else:
+        _browser_credential = None
+
     app.run(
         host=os.environ.get("FLASK_HOST", "127.0.0.1"),
         port=int(os.environ.get("FLASK_PORT", 5001)),
