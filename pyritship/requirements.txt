@@ -1,11 +1,13 @@
 # PyRIT Ship Python Dependencies
-# Based on imports found in pyritship/app.py
 
 # Core PyRIT functionality
 pyrit
 
-# Web framework
+# Web framework (REST API)
 flask
+
+# MCP server
+mcp
 
 # Environment variable management
 python-dotenv
