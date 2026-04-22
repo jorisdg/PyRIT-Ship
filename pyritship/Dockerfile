@@ -27,6 +27,6 @@ EXPOSE 5001 8001
 
 # NOTE: InteractiveBrowserCredential will NOT work in a headless container.
 # So make sure to provide OPENAI_CHAT_KEY
-# By default, starts the Flask REST API. To run the MCP server instead:
-#   docker run ... pyritship /app/venv/bin/python3 mcp_server.py
-CMD ["/app/venv/bin/python3", "app.py"]
+# Change the command to run mcp_server.py if you want to run the MCP server instead of the Flask app.
+CMD ["/app/venv/bin/python3", "restapi_server.py"]
+#CMD ["/app/venv/bin/python3", "mcp_server.py"]
